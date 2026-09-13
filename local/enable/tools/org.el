@@ -8,11 +8,11 @@
            (:locally
             "t" #'org-todo
             "l" #'org-insert-last-stored-link)))
-  (:opt org-directory (:join rps-dir-home "org")
-	    org-id-locations-file (:join org-directory ".org-id-locations")
-	    org-archive-location (concat (:join-d org-directory "archive") "archive_%s::datetree")
-	    org-persist-directory (:join rps-dir-cache "org-persist")
-        org-attach-id-dir (:join-d org-directory "attachments")
+  (:opt org-directory (:mkdir rps-dir-home "org")
+	    org-id-locations-file (:touch org-directory ".org-id-locations")
+	    org-archive-location (:join (:mkdir org-directory "archive") "archive_%s::datetree")
+	    org-persist-directory (:mkdir rps-dir-cache "org-persist")
+        org-attach-id-dir (:mkdir org-directory "attachments")
 	    org-id-link-to-org-use-id t
         org-startup-indented t
         org-todo-keywords '((sequence "TODO" "NEXT" "WAIT" "|" "DONE" "CNCL"))
@@ -29,12 +29,9 @@
         org-complete-tags-always-offer-all-agenda-tags t
         org-ellipsis "…"
         org-clock-idle-time 5)
-  (:mkdir org-directory)
-  (:touch org-id-locations-file)
-  (:mkdir org-directory "archive")
-  (:mkdir org-persist-directory)
-  (:mkdir org-directory "attachments")
-  )
+  (:hook #'rps-org-mode-disable-line-spacing)
+  (:face org-block-begin-line (:overline t)
+         org-block-end-line (:underline '(:position bottom))))
 
 (cfg-pkg org-pdftools
   (:opt org-pdftools-markup-pointer-function #'pdf-annot-add-highlight-markup-annotation)
@@ -42,3 +39,6 @@
   ;; org-noter cries about nov and djvu is not installed. org-noter is dependency of org-pdftools so silence it.
   (cfg org-noter
     (:opt org-noter-supported-modes '(doc-view-mode pdf-view-mode))))
+
+(defun rps-org-mode-disable-line-spacing (&rest args)
+  (setq-local line-spacing nil))
