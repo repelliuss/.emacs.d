@@ -8,11 +8,11 @@
       (:after-this
         (:prepend* fontaine-presets '((regular-ioskeley-mono :default-family "Ioskeley Mono"
                                                              :default-weight regular
-                                                             :default-height 140
+                                                             :default-height 150
                                                              :fixed-pitch-family "Ioskeley Mono"
+                                                             :fixed-pitch-height 1.0
                                                              :header-line-family "Ioskeley Mono"
                                                              :header-line-height 1.0
-                                                             :variable-pitch-family "Ioskeley Mono"
                                                              :mode-line-active-family "Ioskeley Mono"
                                                              :mode-line-inactive-family "Ioskeley Mono"
                                                              :mode-line-active-height 1.0
