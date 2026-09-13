@@ -12,8 +12,6 @@
   (add-to-list 'native-comp-eln-load-path (concat rps-dir-cache "eln/")))
 
 (when rps-system-android-p
-  (setenv "PATH" (format "%s:%s" "/data/data/com.termux/files/usr/bin" (getenv "PATH")))
-  (push "/data/data/com.termux/files/usr/bin" exec-path)
   (setq touch-screen-display-keyboard t
         overriding-text-conversion-style nil))
 

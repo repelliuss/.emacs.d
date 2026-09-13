@@ -45,3 +45,7 @@
 
  load-prefer-newer t)
 
+;; Termux programs need to be available for going further. Other configurations live in os.el.
+(when rps-system-android-p
+  (setenv "PATH" (format "%s:%s" "/data/data/com.termux/files/usr/bin" (getenv "PATH")))
+  (push "/data/data/com.termux/files/usr/bin" exec-path))
