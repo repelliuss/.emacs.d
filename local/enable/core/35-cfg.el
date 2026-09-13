@@ -308,7 +308,7 @@
   (lambda (&rest components)
     `(let ((path (file-name-concat ,@components)))
        (make-directory path t)
-       path)))
+       (file-name-as-directory path))))
 
 (cfg-define :touch
   (lambda (&rest components)
