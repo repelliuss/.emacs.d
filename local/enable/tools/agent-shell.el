@@ -1,5 +1,7 @@
 ;;; agent-shell.el -*- lexical-binding: t; -*-
 
+(enable-when (not rps-system-android-p))
+
 (cfg-pkg agent-shell
   (:bind rps-keymap-leader
          (:autoload "a" #'agent-shell
@@ -46,7 +48,8 @@
     
     :then
     (store-install "claude-code"
-      :npm '(:name "@anthropic-ai/claude-code"))
+      :npm '(:name "@anthropic-ai/claude-code")
+      :skip '(:system android))
 
     :then
     (store-install "claude-agent-acp"
@@ -62,10 +65,12 @@
 
 (store-thread
   (store-install "texlive"
-    :xbps '(:name "texlive-full"))
+    :xbps '(:name "texlive-full")
+    :skip '(:system android))
 
   :then
-  (store-install "dvisvgm"))
+  (store-install "dvisvgm"
+    :skip '(:system android)))
 
 (cfg-pkg (:elpaca latex-to-svg-backend
                     :host github
