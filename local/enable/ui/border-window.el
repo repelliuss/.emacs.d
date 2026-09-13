@@ -19,31 +19,29 @@
 
 (defun border-window--enable ()
   "Enable the border in the current buffer."
-  (run-at-time 0.5 0
-               (lambda ()
-                 (let* ((had-header (and header-line-format (not (and (stringp header-line-format) (string= " " header-line-format)))))
-                        (size 1))
-                   (setq border-window--saved-header had-header)
-                   (unless had-header
-                     (setq-local header-line-format " "))
-                   (mapc #'face-remap-remove-relative border-window--remaps)
-                   (setq border-window--remaps
-                         (list (face-remap-add-relative 'fringe `(:background ,(face-foreground 'default)))
-                               (if had-header
-                                   (face-remap-add-relative 'header-line-inactive `(:box (:line-width ,(cons size size))))
-                                 (face-remap-add-relative 'header-line-inactive
-                                                          `(:background ,(face-background 'default) :height 0.1 :underline (:color "black" :position t))))
-                               (if had-header
-                                   (face-remap-add-relative 'header-line-active `(:box (:line-width ,(cons size size))))
-                                 (face-remap-add-relative 'header-line-active
-                                                          `(:background ,(face-background 'default) :height 0.1 :underline (:color "black" :position t))))))
-                   (border-window-enable-fringe (current-buffer))))))
+  (let* ((had-header (and header-line-format (not (and (stringp header-line-format) (string= " " header-line-format)))))
+         (size 1))
+    (setq border-window--saved-header had-header)
+    (unless had-header
+      (setq-local header-line-format " "))
+    (mapc #'face-remap-remove-relative border-window--remaps)
+    (setq border-window--remaps
+          (list (face-remap-add-relative 'fringe `(:background ,(face-foreground 'default)))
+                (if had-header
+                    (face-remap-add-relative 'header-line-inactive `(:box (:line-width ,(cons size size))))
+                  (face-remap-add-relative 'header-line-inactive
+                                           `(:background ,(face-background 'default) :height 0.1 :underline (:color "black" :position t))))
+                (if had-header
+                    (face-remap-add-relative 'header-line-active `(:box (:line-width ,(cons size size))))
+                  (face-remap-add-relative 'header-line-active
+                                           `(:background ,(face-background 'default) :height 0.1 :underline (:color "black" :position t))))))
+    (border-window-enable-fringe (current-buffer))))
 
 (defun border-window--disable ()
   "Disable the border in the current buffer."
   (let ((win (or (get-buffer-window (current-buffer)) (selected-window))))
     (setq-local header-line-format border-window--saved-header)
-    (mapc #'face-remap-remove-relative border-window--remaps)
+    (mapc #'face-remap-remove-relative (seq-filter #'identity border-window--remaps))
     (setq border-window--remaps nil)
     (set-window-fringes win nil nil)))
 
@@ -66,4 +64,6 @@
 (provide 'border-window)
 ;;; border-window.el ends here
 
-(global-border-window-mode 1)
+(add-hook 'prog-mode-hook #'border-window-mode)
+(with-eval-after-load 'agent-shell
+  (add-hook 'agent-shell-mode-hook #'border-window-mode 90))
