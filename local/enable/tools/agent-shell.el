@@ -60,13 +60,20 @@
       :npm '(:name "opencode-ai")
       :skip '(:system android))))
 
+(store-thread
+  (store-install "texlive"
+    :xbps '(:name "texlive-full"))
+
+  :then
+  (store-install "dvisvgm"))
+
 (cfg-pkg (:elpaca latex-to-svg-backend
                     :host github
                     :repo "alberti42/latex-to-svg-backend"))
 
 (cfg-pkg (:elpaca agent-shell-math-renderer
-                    :host github
-                    :repo "alberti42/agent-shell-math-renderer")
+                  :host github
+                  :repo "alberti42/agent-shell-math-renderer")
   (:opt agent-shell-math-renderer-render-submitted-prompts t)
   (:hook-into agent-shell-mode)
   (:hook-to 'enable-theme-functions #'agent-shell-math-renderer-on-theme-change))
