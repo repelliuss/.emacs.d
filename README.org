@@ -9,7 +9,7 @@ config is the get go way of preparing my environment.
 
 I have written many personal packages to develop my config as a
 project that I am fond of which takes inspirations from many sources
-thanks to the community. 
+thanks to the community.
 
 ** enable: The Configuration Manager
 
@@ -67,7 +67,7 @@ Emacs runs on an interpreter and we write code to develop our config.
 
 *** How to try out my config?
 
-Though I didn't test it properly (😬), after you clone this repo whether with vc, elpaca (without main file and excluding init files etc.) you can just do following and use the module name in the enable config.
+Though I didn't test it properly, after you clone this repo whether with vc, elpaca (without main file and excluding init files etc.) you can just do following and use the module name in the enable config.
 
 #+begin_src elisp
   (enable-module :repelliuss :path (file-name-concat "<path to repo>" "local" "enable"))
@@ -170,3 +170,7 @@ execute some code paths or not.
         :pacman '(:name "mingw-w64-x86_64-hunspell-tr" :system windows))))
 #+end_src
 
+#+ATTR_ORG: :align center
+#+ATTR_HTML: :width 400 :align center
+#+CAPTION: An everyday view of running Emacs
+[[./local/github/emacs-screenshot.png]]
