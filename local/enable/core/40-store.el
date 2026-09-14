@@ -1,5 +1,9 @@
 ;;; 40-store.el --- System manager for package and font installation -*- lexical-binding: t; -*-
 
+;; TODO: Requires a way to explicitly install on some stores and ignore others as skipping all but one is verbose
+;; TODO: skip system value should be able to take list
+;; TODO: skip should be able to take a form
+
 ;; Standalone — no dependency on rps or core functions.
 ;; Will become its own package.
 ;;

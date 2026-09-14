@@ -1,5 +1,7 @@
 ;;; enable.el --- Declarative configuration manager -*- lexical-binding: t; -*-
 
+;; TODO: rename enable-when to enable-if
+
 (require 'cl-lib)
 (require 'seq)
 
