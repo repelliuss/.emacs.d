@@ -26,7 +26,7 @@
         (when rps-system-android-p
           (defun rps-font-set-ioskeley ()
             (interactive)
-            (:face default (:family "Ioskeley Mono" :height 180)
+            (:face default (:family "Ioskeley Mono" :height 150)
                    fixed-pitch (:family "Ioskeley Mono")
                    header-line (:family "Ioskeley Mono")
                    mode-line (:family "Ioskeley Mono")))
