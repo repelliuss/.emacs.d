@@ -18,10 +18,12 @@
         projectile-auto-cleanup-known-projects t)
 
   ;; From projectile: In some shells on Windows, '/' is automatically expanded. Try to use '//' instead
-  (when rps-system-mingw64-p
-    (:after-this
-      (:opt projectile-git-fd-args (concat projectile-git-fd-args " --path-separator=//")
-            projectile-generic-command (concat projectile-generic-command " --path-separator=//"))))
+  (:after-this
+    (if rps-system-mingw64-p
+        (:opt projectile-git-fd-args (concat projectile-git-fd-args " --path-separator=//")
+              projectile-generic-command (concat projectile-generic-command " --path-separator=//"))
+      (:opt projectile-git-fd-args (concat projectile-git-fd-args " --path-separator=/")
+            projectile-generic-command (concat projectile-generic-command " --path-separator=/"))))
 
   (:mkdir (file-name-directory projectile-cache-file))
   (:mkdir (file-name-directory projectile-known-projects-file))
