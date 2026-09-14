@@ -7,7 +7,6 @@
       (if (= 0 (shell-command
                 (string-join '("git config --global user.name repelliuss"
                                "git config --global user.email repelliuss@gmail.com"
-                               "git config --global core.editor emacs"
                                "git config --global core.autocrlf false"
                                "git config --global status.showUntrackedFiles all")
                              " && ")))
