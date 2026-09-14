@@ -11,10 +11,8 @@
 
 /elpa
 
-
-# only keep lockfiles
-straight/*
-!straight/versions
+# native compiled files
+*.elc
 
 # savehist-mode.
 /history
