@@ -12,6 +12,10 @@
                               :repo "repelliuss/lsp-shader-sense"
                               :protocol ssh)))
 
+(cfg-pkg (:require (:elpaca lsp-hlsl
+                            :host github
+                            :repo "repelliuss/lsp-hlsl")))
+
 (cfg emacs
   (:after lsp-mode
     (:hook-to 'hlsl-ts-mode #'lsp-deferred)))
