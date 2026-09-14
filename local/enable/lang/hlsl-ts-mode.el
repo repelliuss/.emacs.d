@@ -4,8 +4,7 @@
 
 (cfg-pkg (:require (:elpaca hlsl-ts-mode
                               :host github
-                              :repo "repelliuss/hlsl-ts-mode"
-                              :protocol ssh)))
+                              :repo "repelliuss/hlsl-ts-mode")))
 
 (cfg-pkg (:require (:elpaca lsp-shader-sense
                               :host github
