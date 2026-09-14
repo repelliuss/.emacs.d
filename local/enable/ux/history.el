@@ -1,9 +1,10 @@
 ;;; history.el -*- lexical-binding: t; -*-
 
 (cfg emacs
-  (:opt save-place-file (concat rps-dir-cache "save-place")
-        recentf-save-file (concat rps-dir-cache "recentf")
-        savehist-file (concat rps-dir-cache "savehist"))
+  (:opt save-place-file (:path rps-dir-cache "save-place")
+        recentf-save-file (:path rps-dir-cache "recentf")
+        recentf-max-menu-items 100
+        savehist-file (:path rps-dir-cache "savehist"))
 
   ;; Track buffer switches
   (:after recentf
