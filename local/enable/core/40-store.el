@@ -1,6 +1,5 @@
 ;;; 40-store.el --- System manager for package and font installation -*- lexical-binding: t; -*-
 
-;; TODO: Requires a way to explicitly install on some stores and ignore others as skipping all but one is verbose
 ;; TODO: skip system value should be able to take list
 ;; TODO: skip should be able to take a form
 
@@ -83,11 +82,12 @@
 ;;                 Android's pkg, which corrupts its lock file if two
 ;;                 installs run simultaneously).
 ;;
-;; `store-install' store steering: any keyword besides :post-install/:then
-;; names a store — since store symbols are registered at runtime (not known
-;; when `store-install' is defined), this is done via &rest + &allow-other-
-;; keys rather than a fixed lambda list. The keyword with its leading colon
-;; stripped is the store symbol; its value is that store's props plist:
+;; `store-install' store steering: any keyword besides
+;; :post-install/:then/:explicit/:skip names a store — since store symbols
+;; are registered at runtime (not known when `store-install' is defined),
+;; this is done via &rest + &allow-other-keys rather than a fixed lambda
+;; list. The keyword with its leading colon stripped is the store symbol;
+;; its value is that store's props plist:
 ;;   (store-install "nodejs" :scoop '(:system windows))
 ;;   (store-install "claude-agent-acp" :npm '(:name "@agentclientprotocol/claude-agent-acp"))
 ;; SPEC props ::= (&key system version name)
@@ -105,7 +105,10 @@
 ;; Named stores applicable to the current system are tried first, in
 ;; written order; if none are given at all, :default-store is tried first
 ;; instead; any remaining per-system stores not already named are tried
-;; after, as generic fallback.
+;; after, as generic fallback. Pass :explicit t to confine dispatch to the
+;; named specs alone — no :default-store fallback, no generic fallback —
+;; the terse alternative to `:skip'-ing every other store one by one when
+;; the intent is "only ever try what I named here."
 ;;
 ;; A plain package name is installed via ordinary per-system store dispatch
 ;; — no separate "font store" concept for plain names; a system's regular
@@ -619,7 +622,7 @@ whether it succeeded or failed, so the queue never stalls."
         (puthash store-sym t store--sync-busy)
         (funcall (store--entry-fn (nth 0 item)) (nth 1 item) (nth 2 item))))))
 
-(defconst store--install-fixed-keys '(:post-install :then :skip)
+(defconst store--install-fixed-keys '(:post-install :then :skip :explicit)
   "Keys on `store-install' that never name a store.")
 
 (defun store--specs-from-plist (args)
@@ -698,33 +701,38 @@ or nil when no version was required."
         (when (and queried (store--query-satisfies-version queried version-fn))
           (list entry name (and version-fn (funcall version-fn))))))))
 
-(defun store--build-preferred-specs (config specs skip-syms)
+(defun store--build-preferred-specs (config specs skip-syms explicit)
   "Return the preferred (STORE-SYMBOL . PROPS) specs to try first.
 SPECS filtered down to those applicable to the current system, minus
-any store in SKIP-SYMS. When none remain, falls back to a single spec
-for CONFIG's :default-store (unless it's :explicit-only or itself in
-SKIP-SYMS)."
+any store in SKIP-SYMS. When none remain and EXPLICIT is nil, falls
+back to a single spec for CONFIG's :default-store (unless it's
+:explicit-only or itself in SKIP-SYMS). EXPLICIT non-nil suppresses
+that default-store fallback — see `store--dispatch-to-store'."
   (let* ((stores (plist-get config :stores))
          (preferred (cl-remove-if-not #'store--applies-to-current-system-p specs))
          (preferred (cl-remove-if (lambda (s) (memq (store--spec-symbol s) skip-syms)) preferred)))
     (or preferred
-        (let ((d (plist-get config :default-store)))
-          (and d
-               (not (store--entry-explicit-only-p (assq d stores)))
-               (not (memq d skip-syms))
-               (list (cons d nil)))))))
+        (and (not explicit)
+             (let ((d (plist-get config :default-store)))
+               (and d
+                    (not (store--entry-explicit-only-p (assq d stores)))
+                    (not (memq d skip-syms))
+                    (list (cons d nil))))))))
 
-(defun store--build-fallback-specs (config preferred skip-syms)
+(defun store--build-fallback-specs (config preferred skip-syms explicit)
   "Return the generic-fallback specs for CONFIG: every registered store
-not already in PREFERRED, not :explicit-only, and not in SKIP-SYMS."
-  (let ((stores (plist-get config :stores))
-        (preferred-syms (mapcar #'store--spec-symbol preferred)))
-    (mapcar (lambda (e) (cons (car e) nil))
-            (cl-remove-if
-             (lambda (e) (or (memq (car e) preferred-syms)
-                             (store--entry-explicit-only-p e)
-                             (memq (car e) skip-syms)))
-             stores))))
+not already in PREFERRED, not :explicit-only, and not in SKIP-SYMS.
+EXPLICIT non-nil suppresses generic fallback entirely, returning nil —
+see `store--dispatch-to-store'."
+  (unless explicit
+    (let ((stores (plist-get config :stores))
+          (preferred-syms (mapcar #'store--spec-symbol preferred)))
+      (mapcar (lambda (e) (cons (car e) nil))
+              (cl-remove-if
+               (lambda (e) (or (memq (car e) preferred-syms)
+                               (store--entry-explicit-only-p e)
+                               (memq (car e) skip-syms)))
+               stores)))))
 
 (defun store--dispatch-found (found ctx post-install)
   "Stamp FOUND's resolved store/name/version onto CTX, then either queue
@@ -748,7 +756,7 @@ it behind a busy synchronous store or dispatch it immediately."
         (puthash store-sym t store--sync-busy))
       (funcall (store--entry-fn entry) resolved-name c))))
 
-(defun store--dispatch-to-store (config name ctx &optional specs post-install skips)
+(defun store--dispatch-to-store (config name ctx &optional specs post-install skips explicit)
   "Dispatch install of NAME through a store handler, with automatic fallback.
 
 SPECS is a list of (STORE-SYMBOL . PROPS) conses — see
@@ -765,13 +773,19 @@ SKIPS is a list of props plists from :skip specs — see
 `store--skip-specs-from-plist'. A skip with no :store and a matching
 :system (or no :system) short-circuits the entire install, calling :then
 immediately. A skip with a :store excludes that store from both preferred
-and fallback when its :system matches (or has no :system)."
+and fallback when its :system matches (or has no :store).
+
+EXPLICIT non-nil confines dispatch to SPECS alone — no :default-store
+fallback when a spec doesn't apply to the current system, and no generic
+fallback to other registered stores. The named-but-unavailable-here case
+still falls through to `store-install-fail', same as running out of
+fallback stores does without EXPLICIT."
   (if (store--skip-entire-p skips)
       (store-install-next ctx)
     (let* ((stores (plist-get config :stores))
            (skip-syms (store--skipped-store-syms skips))
-           (preferred (store--build-preferred-specs config specs skip-syms))
-           (fallback (store--build-fallback-specs config preferred skip-syms))
+           (preferred (store--build-preferred-specs config specs skip-syms explicit))
+           (fallback (store--build-fallback-specs config preferred skip-syms explicit))
            (found (cl-some (lambda (spec) (store--try-store-spec spec stores name))
                            (append preferred fallback))))
       (if (not found)
@@ -834,12 +848,12 @@ has a :version function, or nil when no version is pinned."
                   (funcall ver-fn))))
             specs))
 
-(cl-defun store-install (name-or-url &rest args &key post-install then &allow-other-keys)
+(cl-defun store-install (name-or-url &rest args &key post-install then explicit &allow-other-keys)
   "Install NAME-OR-URL — a plain package name or an http(s) URL.
 
-Any keyword besides :post-install/:then names a store — the keyword with
-its leading colon stripped is the store symbol, and its value is that
-store's props plist:
+Any keyword besides :post-install/:then/:explicit/:skip names a store —
+the keyword with its leading colon stripped is the store symbol, and its
+value is that store's props plist:
   :system   — this spec only applies when it matches `store-current-system';
               on any other system it's as if the keyword were never given.
   :name     — overrides the package name passed to THIS store's
@@ -855,14 +869,12 @@ order; if none are given at all, :default-store is tried first instead;
 any remaining per-system stores not already named are tried after, as
 generic fallback.
 
-POST-INSTALL, if given, is a function (ctx) run after the chosen store
-would otherwise have called `store-install-ok' — NAME-OR-URL's id is not
-actually marked installed/provided until POST-INSTALL itself eventually
-calls `store-install-ok' or `store-install-fail' on the ctx it receives
-(:post-install already cleared from it). Lets an id stay ungated on an
-additional async step beyond the store's own install (e.g. git.el's
-\"git\" install: `git config' must also succeed before \"git\" is
-considered installed, not just the package itself).
+EXPLICIT, when non-nil, confines the install to the named stores alone —
+no :default-store fallback and no generic fallback to other registered
+stores. Use this instead of a `:skip' per other store when the intent is
+simply \"only ever try what I named here\":
+  (store-install \"foo\" :explicit t :apt nil)
+rather than skipping every store besides `apt' one at a time.
 
 THEN is called on completion."
   (declare (indent 1))
@@ -882,10 +894,10 @@ THEN is called on completion."
             (if (and installed-version
                      (not (equal required-version installed-version)))
                 ;; Version mismatch — reinstall rather than skip.
-                (store--dispatch-to-store config name-or-url ctx specs post-install skips)
+                (store--dispatch-to-store config name-or-url ctx specs post-install skips explicit)
               (store--provide id)
               (and then (funcall then))))
-        (store--dispatch-to-store config name-or-url ctx specs post-install skips)))))
+        (store--dispatch-to-store config name-or-url ctx specs post-install skips explicit)))))
 
 ;;; Threading macro
 
