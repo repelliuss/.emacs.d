@@ -11,6 +11,9 @@
         agent-shell-status-kind-label-function #'agent-shell--inverse-icon-status-kind-label
         agent-shell-prefer-viewport-interaction nil)
 
+  (when rps-system-wsl-p
+    (:opt agent-shell-inhibit-system-sleep t))
+
   (when rps-user-work-p
     (:prepend exec-path (file-name-concat (getenv "LOCALAPPDATA") "opencode"))
     (:opt agent-shell-preferred-agent-config '(preselect . opencode)))
