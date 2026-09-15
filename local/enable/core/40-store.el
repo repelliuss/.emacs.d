@@ -1,8 +1,5 @@
 ;;; 40-store.el --- System manager for package and font installation -*- lexical-binding: t; -*-
 
-;; TODO: skip system value should be able to take list
-;; TODO: skip should be able to take a form
-
 ;; Standalone — no dependency on rps or core functions.
 ;; Will become its own package.
 ;;
@@ -654,24 +651,32 @@ Returns a list of (STORE-SYMBOL . PROPS) conses, in the order written."
       (setq args (cddr args)))
     (nreverse skips)))
 
-(defun store--skip-applies-to-current-system-p (props)
-  "Return non-nil if skip PROPS applies to the current system.
-A skip with no :system applies everywhere."
-  (let ((sys (plist-get props :system)))
-    (or (null sys) (eq sys store-current-system))))
+(defun store--skip-applies-p (props)
+  "Return non-nil if skip PROPS applies right now.
+:system, when given, is a single system symbol or a list of them; a skip
+with no :system applies on every system. :when, when given, is a niladic
+predicate form (a function) — the skip only applies when it also returns
+non-nil, for conditions beyond just the active system (e.g. an
+environment variable, a feature check). A skip with neither key applies
+unconditionally."
+  (let ((sys (plist-get props :system))
+        (when-form (plist-get props :when)))
+    (and (or (null sys)
+             (if (listp sys) (memq store-current-system sys) (eq sys store-current-system)))
+         (or (null when-form) (funcall when-form)))))
 
 (defun store--skip-entire-p (skips)
   "Return non-nil if any skip spec applies and carries no :store — skip the whole install."
   (cl-some (lambda (props)
-              (and (store--skip-applies-to-current-system-p props)
+              (and (store--skip-applies-p props)
                    (null (plist-get props :store))))
             skips))
 
 (defun store--skipped-store-syms (skips)
-  "Return list of store symbols to exclude on the current system."
+  "Return list of store symbols to exclude given the currently applicable skips."
   (let (syms)
     (dolist (props skips)
-      (when-let* (((store--skip-applies-to-current-system-p props))
+      (when-let* (((store--skip-applies-p props))
                   (store (plist-get props :store)))
         (push store syms)))
     syms))
@@ -770,27 +775,48 @@ default or via fallback. POST-INSTALL, if given, is stamped onto ctx —
 see `store-install-ok'.
 
 SKIPS is a list of props plists from :skip specs — see
-`store--skip-specs-from-plist'. A skip with no :store and a matching
-:system (or no :system) short-circuits the entire install, calling :then
-immediately. A skip with a :store excludes that store from both preferred
-and fallback when its :system matches (or has no :store).
+`store--skip-specs-from-plist'. Each props plist is checked with
+`store--skip-applies-p': :system (a symbol or list of symbols) and :when
+(a niladic predicate form) both gate whether the skip applies, and either
+may be omitted. A skip with no :store that applies short-circuits the
+entire install, calling :then immediately. A skip with a :store excludes
+that store from both preferred and fallback when it applies — if doing
+so empties out every candidate that would otherwise have been tried
+(see `store--would-have-candidates-p'), that's treated the same way, as
+an intentional no-op calling :then, not a failure.
 
 EXPLICIT non-nil confines dispatch to SPECS alone — no :default-store
 fallback when a spec doesn't apply to the current system, and no generic
 fallback to other registered stores. The named-but-unavailable-here case
 still falls through to `store-install-fail', same as running out of
-fallback stores does without EXPLICIT."
+fallback stores does without EXPLICIT — unless that emptiness is itself
+:skip-caused, per above."
   (if (store--skip-entire-p skips)
       (store-install-next ctx)
     (let* ((stores (plist-get config :stores))
            (skip-syms (store--skipped-store-syms skips))
            (preferred (store--build-preferred-specs config specs skip-syms explicit))
            (fallback (store--build-fallback-specs config preferred skip-syms explicit))
+           (candidates (append preferred fallback))
            (found (cl-some (lambda (spec) (store--try-store-spec spec stores name))
-                           (append preferred fallback))))
-      (if (not found)
-          (store-install-fail ctx)
-        (store--dispatch-found found ctx post-install)))))
+                           candidates)))
+      (cond
+       (found (store--dispatch-found found ctx post-install))
+       ((and skip-syms (not candidates)
+             (store--would-have-candidates-p config specs explicit))
+        ;; Would have had somewhere to try if not for the user's own :skip —
+        ;; that's an intentional no-op, not a failure.
+        (store-install-next ctx))
+       (t (store-install-fail ctx))))))
+
+(defun store--would-have-candidates-p (config specs explicit)
+  "Return non-nil if CONFIG/SPECS/EXPLICIT would yield any candidate store
+absent any :skip filtering. Used to tell a self-inflicted empty candidate
+list (the user's own :skip removed everything there was to try) apart
+from a genuinely empty one (nothing was ever available here) — see
+`store--dispatch-to-store'."
+  (let ((preferred (store--build-preferred-specs config specs nil explicit)))
+    (or preferred (store--build-fallback-specs config preferred nil explicit))))
 
 (cl-defun store-register (system-ids store-symbol
                                   &key query install uninstall check update explicit-only synchronous then)
