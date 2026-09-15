@@ -215,12 +215,12 @@
   
   (rps-funcall-consider-daemon #'meow-global-mode)
 
+  (:hook #'rps-prioritize-meow-insert-state-keymap)
+  
   (:advice-to #'meow-insert :override #'rps-meow-insert-at-point)
-
+  
   (:hook-to 'org-capture-mode #'meow-insert)
-  
   (:hook-to 'completion-in-region-mode #'rps-meow-insert-if-completion-active)
-  
   (:hook-to 'macrostep-mode #'rps-meow-toggle-motion-mode)
 
   (:after consult
@@ -237,3 +237,8 @@
   
   (:after agent-shell
     (:prepend* meow-mode-state-list '((agent-shell-viewport-edit-mode . insert)))))
+
+(defun rps-prioritize-meow-insert-state-keymap ()
+  (push (cons 'meow-insert-mode meow-insert-state-keymap)
+        minor-mode-overriding-map-alist))
+
