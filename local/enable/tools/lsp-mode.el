@@ -5,12 +5,12 @@
 
 ;; For compilation, make sure it is t before installing
 (setq lsp-use-plists t
-      lsp-keymap-prefix "M-l")
+      lsp-keymap-prefix "M-l"
+      lsp-server-install-dir (concat rps-dir-cache "lsp-mode/servers"))
 
 (cfg-pkg (:elpaca lsp-mode
                   :files (:defaults "clients/*.el" "clients/lsp-roslyn-stdpipe.ps1"))
   (:opt lsp-session-file (concat rps-dir-cache "lsp-mode/session")
-        lsp-server-install-dir (concat rps-dir-cache "lsp-mode/servers")
         lsp-idle-delay 0.5
         lsp-inlay-hint-enable nil
         lsp-enable-on-type-formatting nil
