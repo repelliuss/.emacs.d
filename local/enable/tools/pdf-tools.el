@@ -1,6 +1,6 @@
 ;;; pdf-tools.el -*- lexical-binding: t; -*-
 
-(enable-when (not rps-system-android-p))
+(enable-if (not rps-system-android-p))
 
 (store-install "poppler-devel"
   :pacman '(:name "mingw-w64-x86_64-poppler" :system windows)

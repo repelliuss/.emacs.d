@@ -1,6 +1,6 @@
 ;;; pass.el -*- lexical-binding: t; -*-
 
-(enable-when (not rps-system-android-p))
+(enable-if (not rps-system-android-p))
 
 (store-thread
   (store-install "pass")

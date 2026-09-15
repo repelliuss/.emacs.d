@@ -1,6 +1,6 @@
 ;;; agent-shell.el -*- lexical-binding: t; -*-
 
-(enable-when (not rps-system-android-p))
+(enable-if (not rps-system-android-p))
 
 (cfg-pkg agent-shell
   (:bind rps-keymap-leader

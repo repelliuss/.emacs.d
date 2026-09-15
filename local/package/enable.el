@@ -1,7 +1,5 @@
 ;;; enable.el --- Declarative configuration manager -*- lexical-binding: t; -*-
 
-;; TODO: rename enable-when to enable-if
-
 (require 'cl-lib)
 (require 'seq)
 
@@ -25,7 +23,7 @@
   "Plist (:module :filename :path) for the script currently being loaded.")
 
 (defvar enable--skipped nil
-  "Script filenames skipped via `enable-when'.")
+  "Script filenames skipped via `enable-if'.")
 
 (defvar enable--exclusives (make-hash-table :test #'equal)
   "Filename -> list of mutually exclusive filenames.")
@@ -148,7 +146,7 @@ TYPE is a keyword indicating when the event is provided:
           (enable--load-group mod (car group-spec) (cdr group-spec)))))))
 
 
-(defmacro enable-when (condition &rest body)
+(defmacro enable-if (condition &rest body)
   "Skip current script unless CONDITION holds, evaluating BODY before skip."
   `(unless ,condition
      (when-let* ((ctx enable--context))
@@ -172,7 +170,7 @@ TYPE is a keyword indicating when the event is provided:
       (let ((inhibit-read-only t))
         (erase-buffer)
         (when enable--skipped
-          (insert "Skipped (enable-when condition failed):\n")
+          (insert "Skipped (enable-if condition failed):\n")
           (dolist (fname (reverse enable--skipped))
             (insert (format "  %s\n" fname)))
           (insert "\n"))

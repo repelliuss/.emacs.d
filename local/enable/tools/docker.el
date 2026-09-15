@@ -3,7 +3,7 @@
 ;; Docker doesn't actually work on Android/Termux: the kernel lacks what
 ;; Docker needs even rooted, and Termux's own docker package is patched
 ;; but not fully functional (docker-compose broken).
-(enable-when (not rps-system-android-p))
+(enable-if (not rps-system-android-p))
 
 (store-install "docker")
 
