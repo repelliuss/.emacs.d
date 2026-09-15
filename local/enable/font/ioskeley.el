@@ -10,19 +10,22 @@
                                                              :default-weight regular
                                                              :default-height 150
                                                              :variable-pitch-family "Ioskeley Mono"
-                                                             :variable-pitch-family 1.0
-                                                             :fixed-pitch-family "Ioskeley Mono"
-                                                             :fixed-pitch-height 1.0
-                                                             :header-line-family "Ioskeley Mono"
-                                                             :header-line-height 1.0
-                                                             :mode-line-active-family "Ioskeley Mono"
-                                                             :mode-line-inactive-family "Ioskeley Mono"
-                                                             :mode-line-active-height 1.0
-                                                             :mode-line-inactive-height 1.0)
+                                                             :mode-line-active-height 130
+                                                             :mode-line-inactive-height 130)
                                       (regular-ioskeley-mono-sm :inherit regular-ioskeley-mono
                                                                 :default-height 120)))
+
         (unless rps-system-android-p
           (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular-ioskeley-mono)))
+
+        ;; BUG: doesn't work on emacs startup
+        ;; fontaine doesn't handle mode-line face but doom-modeline
+        ;; explicitly use it to define a blank seperator between left
+        ;; aligned and right aligned segments for inactive(?)
+        ;; window. this causes shift on right side of the mode line
+        ;; after changing selected window.
+        (:face mode-line (:family "Ioskeley Mono" :height 130))
+        
         (when rps-system-android-p
           (defun rps-font-set-ioskeley ()
             (interactive)
