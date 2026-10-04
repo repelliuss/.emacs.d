@@ -1,9 +1,10 @@
 ;;; flyover.el -*- lexical-binding: t; -*-
 
 (cfg-pkg (:require
-            (:elpaca flyover
-                     :host github
-                     :repo "konrad1977/flyover"))
+          (:elpaca flyover
+                   :host github
+                   :repo "konrad1977/flyover"
+                   :remotes ("repelliuss" :repo "repelliuss/flyover")))
   (:opt flyover-background-lightness 90
         flyover-text-tint 'darker
         flyover-text-tint-percent 100
@@ -25,3 +26,4 @@
     (:opt flyover-error-icon (nerd-icons-codicon "nf-cod-error" :v-adjust 0.05)
           flyover-warning-icon (nerd-icons-codicon "nf-cod-warning" :v-adjust 0.05)
           flyover-info-icon (nerd-icons-codicon "nf-cod-info" :v-adjust 0.05))))
+

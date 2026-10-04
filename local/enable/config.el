@@ -15,8 +15,7 @@
   (:editor :except
            (project))
   (:tools :except
-          (flyover
-           eglot
+          (eglot
            flymake))
   (:lang)))
 
