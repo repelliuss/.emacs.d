@@ -12,7 +12,7 @@
         agent-shell-prefer-viewport-interaction nil)
 
   (when rps-system-wsl-p
-    (:opt agent-shell-inhibit-system-sleep t))
+    (:opt agent-shell-inhibit-system-sleep nil))
 
   (when rps-user-work-p
     (:prepend exec-path (file-name-concat (getenv "LOCALAPPDATA") "opencode"))
