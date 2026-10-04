@@ -3,4 +3,5 @@
 (cfg-pkg ghostel
   (:bind rps-keymap-open
          "t" #'ghostel)
-  (:opt ghostel-initial-input-mode 'line))
+  (:opt ghostel-initial-input-mode 'line
+        ghostel-kill-buffer-on-exit nil))
