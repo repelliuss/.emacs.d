@@ -2,8 +2,12 @@
 
 (cfg-pkg doom-modeline
   (:opt doom-modeline-indent-info t
-        doom-modeline-height (+ (window-font-height nil 'mode-line) 16)
+        doom-modeline-height 28
         doom-modeline-buffer-file-name-style 'file-name)
+
+  (:after dirvish
+    (:opt dirvish-mode-line-height (- doom-modeline-height 6)))
+  
   (doom-modeline-mode 1))
 
 (cfg emacs

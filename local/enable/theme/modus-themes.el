@@ -14,7 +14,7 @@
    '((fg-heading-0 blue-cooler)
 
      (border-mode-line-active fg-main)
-     (border-mode-line-inactive unspecified)
+     (border-mode-line-inactive fg-main)
 
      (bg-mode-line-inactive bg-cyan-subtle)
      (bg-mode-line-active bg-cyan-intense)
