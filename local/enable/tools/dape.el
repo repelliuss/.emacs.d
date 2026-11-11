@@ -1,5 +1,9 @@
 ;;; dape.el -*- lexical-binding: t; -*-
 
+;; (store-install "lldb"
+;;   :pacman '(:name "mingw-w64-x86_64-lldb" :system windows)
+;;   :explicit t)
+
 (cfg-pkg (:require dape)
   (:opt dape-inlay-hints t
         dape-adapter-dir (:join-d rps-dir-cache "debugger")

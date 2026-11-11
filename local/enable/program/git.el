@@ -2,6 +2,7 @@
 
 (store-thread
   (store-install "git"
+    :pacman '(:name "mingw-w64-x86_64-git" :system windows)
     :post-install
     (lambda (ctx)
       (if (= 0 (shell-command
@@ -12,6 +13,10 @@
                              " && ")))
           (store-install-ok ctx)
         (store-install-fail ctx))))
+
+  :then
+  (store-install "git-gui"
+    :pacman '(:name "mingw-w64-x86_64-git-gui" :system windows))
 
   :then
   (store-install "git-credential-oauth"
@@ -25,9 +30,8 @@
                                "git config --global github.user repelliuss")
                              " && ")))
           (store-install-ok ctx)
-        (store-install-fail ctx))))
+        (store-install-fail ctx)))))
 
-  :then
-  (cfg-pkg git-timemachine
-    (:after meow
-      (:prepend meow-mode-state-list '(git-timemachine-mode . motion)))))
+(cfg-pkg git-timemachine
+  (:after meow
+    (:prepend meow-mode-state-list '(git-timemachine-mode . motion))))

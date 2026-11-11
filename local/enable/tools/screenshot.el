@@ -1,5 +1,7 @@
 ;;; screenshot.el -*- lexical-binding: t; -*-
 
+(enable-if (not rps-system-windows-p))
+
 (store-install "imagemagick"
   :xbps '(:name "ImageMagick" :system void-linux)
   :then

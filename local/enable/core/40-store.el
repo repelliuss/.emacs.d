@@ -1213,3 +1213,10 @@ immediately preceding call, recursively."
 (provide 'store)
 
 ;;; 40-store.el ends here
+
+;; BUG: git-credential-oauth keep getting installed with work windows
+;; and I believe it also prints (Shell command failed with code 5 and
+;; no output) as message. this message should also tell its origin
+
+;; BUG: docker-compose keep getting installed on work windows even
+;; with explicit t
