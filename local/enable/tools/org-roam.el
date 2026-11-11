@@ -16,12 +16,11 @@
        "d" #'org-roam-dailies-goto-date
        "p" #'org-roam-dailies-goto-previous-note
        "n" #'org-roam-dailies-goto-next-note)))
-  (:after (enable-event :file "local" "org")
-    (:opt org-roam-directory (:mkdir org-directory "roam")))
-  (:opt
-   org-roam-db-location (:join rps-dir-cache "org-roam" "org-roam.db")
-   org-roam-dailies-directory "journal/"
-   org-roam-node-display-template (concat "${title:*} " (propertize "${tags:10}" 'face 'org-tag)))
+  (:after-this
+    (:opt org-roam-directory (:mkdir org-directory "roam")
+          org-roam-db-location (:join rps-dir-cache "org-roam" "org-roam.db")
+          org-roam-dailies-directory "journal/"
+          org-roam-node-display-template (concat "${title:*} " (propertize "${tags:10}" 'face 'org-tag))))
   (:mkdir rps-dir-cache "org-roam")
   (:prepend display-buffer-alist '("\\*org-roam\\*"
                                     (display-buffer-in-direction)
@@ -43,7 +42,7 @@
   (:after-this
     (:prepend org-roam-mode-sections #'org-roam-unlinked-references-section))
 
-  (:after (enable-event :file "local" "org")
+  (:after org
     (org-roam-db-autosync-mode 1))
 
   )

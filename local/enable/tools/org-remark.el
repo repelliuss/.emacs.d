@@ -1,7 +1,7 @@
 ;;; org-remark.el -*- lexical-binding: t; -*-
 
 (cfg-pkg org-remark
-  (:after (enable-event :file "local" "org")
+  (:after-this
     (:opt org-remark-notes-file-path (:join org-directory "org-remark.org")))
   (:bind
     ((setq org-remark-map (make-sparse-keymap))
@@ -18,9 +18,9 @@
      "s" #'org-remark-save
      "c" #'org-remark-change
      "t" #'org-remark-toggle
-     "v" #'org-remark-view)
-    (org-mode-map
-     (:locally
-      "r" (cons "remark" org-remark-map))))
+     "v" #'org-remark-view))
   (:after org
+    (:bind org-mode-map
+           (:locally
+            "r" (cons "remark" org-remark-map)))
     (org-remark-global-tracking-mode 1)))

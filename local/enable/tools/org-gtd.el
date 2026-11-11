@@ -28,7 +28,8 @@
              "p" #'org-gtd-process-inbox
              "n" #'org-gtd-show-all-next
              "s" #'org-gtd-reflect-stuck-projects))
-  (:opt org-gtd-update-ack "4.0.0"
+  (:after-this
+   (:opt org-gtd-update-ack "4.0.0"
         org-gtd-keyword-mapping '((todo . "TODO")
                                   (next . "NEXT")
                                   (wait . "WAIT")
@@ -41,12 +42,10 @@
         org-gtd-refile-prompt-for-types '(single-action project-heading project-task
                                                         calendar someday delegated
                                                         tickler habit
-                                                        knowledge quick-action trash))
+                                                        knowledge quick-action trash)
+        org-gtd-directory (:mkdir org-directory "roam" "gtd")))
   (:safe-local 'org-gtd-keyword-mapping)
   (:advice-to #'org-gtd-id--generate :override #'org-id-new)
-  
-  (:after 'org
-    (:opt org-gtd-directory (:mkdir org-directory "roam" "gtd")))
   
   (:after 'org-agenda
     (:prepend org-agenda-files org-gtd-directory))

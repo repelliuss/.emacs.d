@@ -1,7 +1,7 @@
 ;;; org-modern.el -*- lexical-binding: t; -*-
 
 (cfg-pkg org-modern
-  (global-org-modern-mode 1))
+  (:hook-to 'org-mode #'org-modern-mode))
 
 (cfg-pkg (:elpaca org-modern-indent
                   :host github

@@ -1,0 +1,3 @@
+[submodule "enable"]
+	path = local/package/enable
+	url = https://github.com/repelliuss/enable.git
