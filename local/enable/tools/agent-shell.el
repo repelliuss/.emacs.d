@@ -2,6 +2,45 @@
 
 (enable-if (not rps-system-android-p))
 
+;; npm ships with nodejs itself, so no separate binary/setup step is
+;; needed the way pnpm required.
+(store-thread
+  (store-install "nodejs")
+  :then
+  (store-register store-current-system 'npm
+    :query (lambda (name) (= 0 (call-process "npm" nil nil nil "view" name "version")))
+    :check (lambda (name) (= 0 (call-process "npm" nil nil nil "list" "-g" name)))
+    :install (lambda (name ctx)
+               (store-async-install-process ctx (format "npm:%s" name)
+                 (list "sudo" "npm" "install" "-g" name)
+                 :on-success (lambda () (store-install-ok ctx))))
+    :update (lambda (name ctx)
+              (store-async-install-process ctx (format "npm:update:%s" name)
+                (list "sudo" "npm" "update" "-g" name)
+                :on-success (lambda () (store-update-ok ctx))))
+    :uninstall (lambda (name ctx)
+                 (store-async-process (format "npm:remove:%s" name)
+                     (list "sudo" "npm" "uninstall" "-g" name)
+                   :on-success (lambda () (store-uninstall-ok ctx))
+                   :on-fail (lambda () (store-uninstall-fail ctx)))))
+  
+  :then
+  (store-install "claude-code"
+    :npm '(:name "@anthropic-ai/claude-code")
+    :skip '(:system android))
+
+  :then
+  (store-install "claude-agent-acp"
+    :npm '(:name "@agentclientprotocol/claude-agent-acp"))
+
+  :then
+  ;; opencode-ai's package.json restricts `os' to
+  ;; darwin/linux/win32 and Termux node reports `android' —
+  ;; npm refuses the install outright there.
+  (store-install "opencode"
+    :npm '(:name "opencode-ai")
+    :skip '(:system android)))
+
 (cfg-pkg agent-shell
   (:bind rps-keymap-leader
          (:autoload "a" #'agent-shell
@@ -25,46 +64,7 @@
     (:opt agent-shell-path-resolver-function #'rps-agent-shell-resolve-path-for-windows))
 
   (:after-this
-    (:bind rps-keymap-leader "a" #'agent-shell))
-
-  ;; npm ships with nodejs itself, so no separate binary/setup step is
-  ;; needed the way pnpm required.
-  (store-thread
-    (store-install "nodejs")
-    :then
-    (store-register store-current-system 'npm
-      :query (lambda (name) (= 0 (call-process "npm" nil nil nil "view" name "version")))
-      :check (lambda (name) (= 0 (call-process "npm" nil nil nil "list" "-g" name)))
-      :install (lambda (name ctx)
-                 (store-async-install-process ctx (format "npm:%s" name)
-                   (list "sudo" "npm" "install" "-g" name)
-                   :on-success (lambda () (store-install-ok ctx))))
-      :update (lambda (name ctx)
-                (store-async-install-process ctx (format "npm:update:%s" name)
-                  (list "sudo" "npm" "update" "-g" name)
-                  :on-success (lambda () (store-update-ok ctx))))
-      :uninstall (lambda (name ctx)
-                   (store-async-process (format "npm:remove:%s" name)
-                       (list "sudo" "npm" "uninstall" "-g" name)
-                     :on-success (lambda () (store-uninstall-ok ctx))
-                     :on-fail (lambda () (store-uninstall-fail ctx)))))
-    
-    :then
-    (store-install "claude-code"
-      :npm '(:name "@anthropic-ai/claude-code")
-      :skip '(:system android))
-
-    :then
-    (store-install "claude-agent-acp"
-      :npm '(:name "@agentclientprotocol/claude-agent-acp"))
-
-    :then
-    ;; opencode-ai's package.json restricts `os' to
-    ;; darwin/linux/win32 and Termux node reports `android' —
-    ;; npm refuses the install outright there.
-    (store-install "opencode"
-      :npm '(:name "opencode-ai")
-      :skip '(:system android))))
+    (:bind rps-keymap-leader "a" #'agent-shell)))
 
 (store-thread
   (store-install "texlive"
@@ -87,7 +87,7 @@
   (:hook-to 'enable-theme-functions #'agent-shell-math-renderer-on-theme-change))
 
 (cfg-pkg emcp
-  (:opt emcp-default-profile 'inspect)
+  (:opt emcp-default-profile 'full-control)
   (:after agent-shell
     (:prepend agent-shell-mcp-servers '((name . "emcp")
                                         (type . "http")
@@ -96,6 +96,13 @@
                                                  (require 'emcp)
                                                  (let ((server (emcp-start emcp-default-profile)))
                                                    (emcp-server-url server))))))))
+
+(cfg-pkg (:elpaca agent-shell-queue-transient
+                  :host github
+                  :repo "mrcnski/agent-shell-queue-transient")
+  (:after agent-shell
+    (:bind agent-shell-mode-map
+           "C-<return>" #'agent-shell-queue-transient)))
 
 (defun rps-agent-shell-dot-subdir-function (subdir)
   (expand-file-name (file-name-concat ".agent-shell"

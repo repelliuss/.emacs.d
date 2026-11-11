@@ -4,4 +4,5 @@
   (:bind rps-keymap-open
          "t" #'ghostel)
   (:opt ghostel-initial-input-mode 'line
-        ghostel-kill-buffer-on-exit nil))
+        ghostel-kill-buffer-on-exit nil
+        ghostel-ignore-cursor-change t))
