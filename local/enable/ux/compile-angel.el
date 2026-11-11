@@ -1,6 +1,5 @@
 ;;; compile-angel.el -*- lexical-binding: t; -*-
 
-(setq compile-angel-debug t)
 (cfg-pkg (:require compile-angel)
   (:opt compile-angel-verbose t
         native-comp-async-query-on-exit t)
