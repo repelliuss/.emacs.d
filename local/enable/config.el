@@ -1,7 +1,9 @@
 ;;; enable config -*- lexical-binding: t; -*-
 ;; Managed by `enable-catalog-save'.  Manual edits are fine.
 
-(:early (:local (:core)))
+(:early
+ (:local
+  (:core)))
 
 (:init
  (:local
@@ -10,7 +12,8 @@
   (:font fontaine aporetic ioskeley nerd-icons font-list)
   (:program)
   (:modeline doom-modeline)
-  (:ui)
+  (:ui :except
+       (border-window))
   (:ux)
   (:editor :except
            (project))
@@ -18,4 +21,3 @@
           (eglot
            flymake))
   (:lang)))
-

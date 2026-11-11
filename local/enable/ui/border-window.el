@@ -15,7 +15,8 @@
 
 (defun border-window-enable-fringe (&optional buffer)
   (interactive)
-  (set-window-fringes (get-buffer-window (or buffer (current-buffer))) 1 1 'outside-margins 'persistent))
+  (let ((buffer (or buffer (current-buffer))))
+    (run-at-time 2 0 (lambda () (set-window-fringes (get-buffer-window buffer)  1 1 'outside-margins 'persistent)))))
 
 (defun border-window--enable ()
   "Enable the border in the current buffer."

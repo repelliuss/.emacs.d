@@ -1,9 +1,10 @@
 ;;; early-init.el --- -*- lexical-binding: t; -*-
 
-(defvar enable-config-file (concat user-emacs-directory "local/enable/config.el"))
+(add-to-list 'load-path (expand-file-name "local/package/enable" user-emacs-directory))
 
-(load (concat user-emacs-directory "local/package/enable") nil 'nomessage)
-(load (concat user-emacs-directory "local/package/enable-catalog") nil 'nomessage)
+(defvar enable-config-file (concat user-emacs-directory "local/enable/config.el"))
+(require 'enable)
+(require 'enable-catalog)
 
 (enable-module :local :path (concat user-emacs-directory "local/enable/"))
 (enable :early)
