@@ -9,9 +9,12 @@
   (store-install "docker")
 
   :then
+  ;; Only wanted on Void via xbps; on windows the docker CLI from scoop is
+  ;; used as-is.
   (store-install "docker-compose"
     :explicit t
-    :xbps '(:name "docker-compose")))
+    :xbps t
+    :skip '(:system windows)))
 
 (cfg-pkg docker
   (:bind rps-keymap-open

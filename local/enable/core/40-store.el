@@ -67,7 +67,7 @@
 ;;                 implicit fallback would silently assume intent the
 ;;                 caller never stated. url-font is explicit-only on
 ;;                 every system for exactly this reason: a caller must
-;;                 write `:url-font nil' to mean "treat this URL as a
+;;                 write `:url-font t' to mean "treat this URL as a
 ;;                 font," never get it by accident because every other
 ;;                 store's query happened to reject the URL first.
 ;;   :synchronous  — non-nil means at most one install runs at a time for
@@ -84,13 +84,16 @@
 ;; are registered at runtime (not known when `store-install' is defined),
 ;; this is done via &rest + &allow-other-keys rather than a fixed lambda
 ;; list. The keyword with its leading colon stripped is the store symbol;
-;; its value is that store's props plist:
+;; its value is that store's props plist, or t for no props:
+;;   (store-install "docker-compose" :explicit t :xbps t)
 ;;   (store-install "nodejs" :scoop '(:system windows))
 ;;   (store-install "claude-agent-acp" :npm '(:name "@agentclientprotocol/claude-agent-acp"))
 ;; SPEC props ::= (&key system version name)
 ;;   :system  restricts this spec to apply only when it matches
 ;;            `store-current-system' — filtered out before dispatch, not
-;;            merely skipped-via-fallback.
+;;            merely skipped-via-fallback. A spec naming a store that
+;;            isn't registered on the current system is filtered out the
+;;            same way.
 ;;   :name    overrides the package name passed to THIS store's
 ;;            :query/:install (e.g. "ripgrep" vs "BurntSushi.ripgrep.MSVC").
 ;;            Defaults to the call's own NAME-OR-URL. The logical id
@@ -107,13 +110,26 @@
 ;; the terse alternative to `:skip'-ing every other store one by one when
 ;; the intent is "only ever try what I named here."
 ;;
+;; :skip (repeatable) takes (&key system when store). :system is a system
+;; symbol or list, :when a niladic predicate; both optional, both must
+;; hold for the skip to apply. Without :store an applying skip makes the
+;; whole install a silent no-op that still runs :then ("doesn't belong
+;; here"); with :store (a symbol or list) it only removes those stores
+;; from the candidates:
+;;   (store-install "go" :skip '(:system android))
+;;   (store-install "python" :skip '(:store pacman :system windows))
+;; Anything else that leaves no store able to provide the package — none
+;; applicable on this system, every :query rejecting it, or per-store
+;; skips removing every candidate — is `store-install-fail' with a
+;; reason, and :then is not called.
+;;
 ;; A plain package name is installed via ordinary per-system store dispatch
 ;; — no separate "font store" concept for plain names; a system's regular
 ;; package manager already owns whatever OS-level registration a font
 ;; package needs. An http(s) URL is a plain string like any other NAME to
 ;; `store-install', but a URL alone never implies "font": `url-font' is
 ;; :explicit-only (above), so a caller must always name it directly, e.g.
-;; (store-install "https://..." :url-font nil) — never picked up by
+;; (store-install "https://..." :url-font t) — never picked up by
 ;; accident just because it was the only store willing to claim a
 ;; URL-shaped name during fallback. A future URL-consuming store for some
 ;; other kind of resource can coexist the same way, equally explicit.
@@ -238,9 +254,15 @@ until an additional async step (beyond the store's own install) succeeds."
       (store-install-next ctx)
       (store--sync-maybe-drain ctx))))
 
-(defun store-install-fail (ctx)
-  "Report installation failure for CTX."
-  (warn "store: failed to install %s" (plist-get ctx :id))
+(defun store-install-fail (ctx &optional reason)
+  "Report installation failure for CTX.
+REASON, when given, is a string saying what failed (e.g. a process exit
+code or a post-install step) and is appended to the warning along with
+the store CTX was dispatched to, so the warning names its origin."
+  (warn "store: failed to install %s%s%s"
+        (plist-get ctx :id)
+        (if-let* ((store (plist-get ctx :store))) (format " via %s" store) "")
+        (if reason (concat ": " reason) ""))
   (store--sync-maybe-drain ctx))
 
 (defun store-update-ok (ctx)
@@ -412,11 +434,21 @@ ON-SUCCESS called (no args) on exit-code 0; ON-FAIL otherwise."
       buf)))
 
 (defun store-async-install-process (ctx name command &rest args)
-  "Like `store-async-process' with automatic fail-reporting for CTX."
+  "Like `store-async-process' with automatic fail-reporting for CTX.
+The failure reason names the command and its exit code (or that the
+executable wasn't found) and the buffer NAME holding its output."
   (declare (indent 2))
-  (apply #'store-async-process name command
-         :on-fail (lambda () (store-install-fail ctx))
-         args))
+  (let (code)
+    (apply #'store-async-process name command
+           :sentinel (lambda (process _event)
+                       (setq code (process-exit-status process)))
+           :on-fail (lambda ()
+                      (store-install-fail
+                       ctx (if code
+                               (format "%s exited with code %d (see buffer %s)"
+                                       (car command) code name)
+                             (format "%s not found" (car command)))))
+           args)))
 
 ;;; URL utilities (Emacs built-ins only — no curl)
 
@@ -626,13 +658,17 @@ whether it succeeded or failed, so the queue never stalls."
   "Extract per-store specs from ARGS, the raw &rest plist of `store-install'.
 Every keyword not in `store--install-fixed-keys' names a store —
 STORE-SYMBOL is that keyword with its leading colon stripped, paired with
-its value as that store's props plist (:system :version :name).
+its value as that store's props plist (:system :version :name). A value
+of t means \"no props\" (`:xbps t') and is normalised to nil here, once,
+so nothing downstream has to special-case it.
 Returns a list of (STORE-SYMBOL . PROPS) conses, in the order written."
   (let (specs)
     (while args
       (let ((key (car args)) (props (cadr args)))
         (unless (memq key store--install-fixed-keys)
-          (push (cons (intern (substring (symbol-name key) 1)) props) specs))
+          (push (cons (intern (substring (symbol-name key) 1))
+                      (if (eq props t) nil props))
+                specs))
         (setq args (cddr args))))
     (nreverse specs)))
 
@@ -673,12 +709,13 @@ unconditionally."
             skips))
 
 (defun store--skipped-store-syms (skips)
-  "Return list of store symbols to exclude given the currently applicable skips."
+  "Return list of store symbols to exclude given the currently applicable skips.
+A skip's :store is a single store symbol or a list of them."
   (let (syms)
     (dolist (props skips)
       (when-let* (((store--skip-applies-p props))
                   (store (plist-get props :store)))
-        (push store syms)))
+        (setq syms (append (if (listp store) store (list store)) syms))))
     syms))
 
 (defun store--applies-to-current-system-p (spec)
@@ -698,7 +735,7 @@ registered, available for the resolved name, and satisfies its own
 REQUIRED-VERSION is the string returned by the spec's :version function,
 or nil when no version was required."
   (let* ((entry (assq (store--spec-symbol spec) stores))
-         (props (let ((p (store--spec-props spec))) (if (eq p t) nil p)))
+         (props (store--spec-props spec))
          (name (or (plist-get props :name) default-name))
          (version-fn (plist-get props :version)))
     (when entry
@@ -708,13 +745,19 @@ or nil when no version was required."
 
 (defun store--build-preferred-specs (config specs skip-syms explicit)
   "Return the preferred (STORE-SYMBOL . PROPS) specs to try first.
-SPECS filtered down to those applicable to the current system, minus
-any store in SKIP-SYMS. When none remain and EXPLICIT is nil, falls
-back to a single spec for CONFIG's :default-store (unless it's
-:explicit-only or itself in SKIP-SYMS). EXPLICIT non-nil suppresses
-that default-store fallback — see `store--dispatch-to-store'."
+SPECS filtered down to those applicable to the current system — their
+:system matches and their store is actually registered on it (an
+`:xbps' spec on windows names nothing that exists here, so it's dropped
+rather than counted as a candidate) — minus any store in SKIP-SYMS.
+When none remain and EXPLICIT is nil, falls back to a single spec for
+CONFIG's :default-store (unless it's :explicit-only or itself in
+SKIP-SYMS). EXPLICIT non-nil suppresses that default-store fallback —
+see `store--dispatch-to-store'."
   (let* ((stores (plist-get config :stores))
-         (preferred (cl-remove-if-not #'store--applies-to-current-system-p specs))
+         (preferred (cl-remove-if-not
+                     (lambda (s) (and (store--applies-to-current-system-p s)
+                                      (assq (store--spec-symbol s) stores)))
+                     specs))
          (preferred (cl-remove-if (lambda (s) (memq (store--spec-symbol s) skip-syms)) preferred)))
     (or preferred
         (and (not explicit)
@@ -778,19 +821,18 @@ SKIPS is a list of props plists from :skip specs — see
 `store--skip-specs-from-plist'. Each props plist is checked with
 `store--skip-applies-p': :system (a symbol or list of symbols) and :when
 (a niladic predicate form) both gate whether the skip applies, and either
-may be omitted. A skip with no :store that applies short-circuits the
-entire install, calling :then immediately. A skip with a :store excludes
-that store from both preferred and fallback when it applies — if doing
-so empties out every candidate that would otherwise have been tried
-(see `store--would-have-candidates-p'), that's treated the same way, as
-an intentional no-op calling :then, not a failure.
+may be omitted. A skip with no :store that applies means \"this package
+doesn't belong here\": the entire install is a silent no-op and :then is
+called. A skip with a :store (a symbol or list of symbols) only removes
+those stores from both preferred and fallback when it applies.
 
 EXPLICIT non-nil confines dispatch to SPECS alone — no :default-store
-fallback when a spec doesn't apply to the current system, and no generic
-fallback to other registered stores. The named-but-unavailable-here case
-still falls through to `store-install-fail', same as running out of
-fallback stores does without EXPLICIT — unless that emptiness is itself
-:skip-caused, per above."
+fallback, and no generic fallback to other registered stores.
+
+Whenever no candidate provides NAME — none applies on this system, every
+:query rejected it, or per-store skips removed them all — the result is
+`store-install-fail' with a reason, and :then is NOT called. Only a
+whole-install skip continues the chain without installing."
   (if (store--skip-entire-p skips)
       (store-install-next ctx)
     (let* ((stores (plist-get config :stores))
@@ -802,21 +844,15 @@ fallback stores does without EXPLICIT — unless that emptiness is itself
                            candidates)))
       (cond
        (found (store--dispatch-found found ctx post-install))
-       ((and skip-syms (not candidates)
-             (store--would-have-candidates-p config specs explicit))
-        ;; Would have had somewhere to try if not for the user's own :skip —
-        ;; that's an intentional no-op, not a failure.
-        (store-install-next ctx))
-       (t (store-install-fail ctx))))))
-
-(defun store--would-have-candidates-p (config specs explicit)
-  "Return non-nil if CONFIG/SPECS/EXPLICIT would yield any candidate store
-absent any :skip filtering. Used to tell a self-inflicted empty candidate
-list (the user's own :skip removed everything there was to try) apart
-from a genuinely empty one (nothing was ever available here) — see
-`store--dispatch-to-store'."
-  (let ((preferred (store--build-preferred-specs config specs nil explicit)))
-    (or preferred (store--build-fallback-specs config preferred nil explicit))))
+       ((null candidates)
+        (store-install-fail
+         ctx (format "no candidate store on %s%s" store-current-system
+                     (if skip-syms (format " (skipped: %s)" skip-syms) ""))))
+       (t
+        (store-install-fail
+         ctx (format "not available in %s"
+                     (mapconcat (lambda (s) (symbol-name (store--spec-symbol s)))
+                                candidates ", "))))))))
 
 (cl-defun store-register (system-ids store-symbol
                                   &key query install uninstall check update explicit-only synchronous then)
@@ -879,9 +915,11 @@ has a :version function, or nil when no version is pinned."
 
 Any keyword besides :post-install/:then/:explicit/:skip names a store —
 the keyword with its leading colon stripped is the store symbol, and its
-value is that store's props plist:
+value is that store's props plist, or t for no props (`:xbps t'):
   :system   — this spec only applies when it matches `store-current-system';
               on any other system it's as if the keyword were never given.
+              The same goes for a store that isn't registered on the
+              current system at all.
   :name     — overrides the package name passed to THIS store's
               :query/:install (e.g. \"ripgrep\" vs \"BurntSushi.ripgrep.MSVC\").
               The logical id (state file / `store-feature-for-id' / :id)
@@ -899,10 +937,23 @@ EXPLICIT, when non-nil, confines the install to the named stores alone —
 no :default-store fallback and no generic fallback to other registered
 stores. Use this instead of a `:skip' per other store when the intent is
 simply \"only ever try what I named here\":
-  (store-install \"foo\" :explicit t :apt nil)
+  (store-install \"foo\" :explicit t :apt t)
 rather than skipping every store besides `apt' one at a time.
 
-THEN is called on completion."
+:skip (may be given more than once) takes (&key system when store):
+  :system — a system symbol or list of them; absent = every system.
+  :when   — niladic predicate; the skip applies only when it's non-nil.
+  :store  — a store symbol or list of them. Absent: the WHOLE install is
+            skipped (silent no-op, THEN still runs) — \"doesn't belong
+            here\". Present: only those stores are removed from the
+            candidates.
+  (store-install \"docker-compose\" :explicit t :xbps t :skip \\='(:system windows))
+  (store-install \"python\" :skip \\='(:store pacman :system windows))
+
+THEN is called on completion, or right away when a whole-install :skip
+applies. When no store can provide NAME (including when per-store skips
+removed every candidate), `store-install-fail' reports why and THEN is
+not called."
   (declare (indent 1))
   (let* ((config (store--system-config))
          (id (if (store--url-p name-or-url)
@@ -912,7 +963,7 @@ THEN is called on completion."
          (specs (store--specs-from-plist args))
          (skips (store--skip-specs-from-plist args)))
     (if (not config)
-        (store-install-fail ctx)
+        (store-install-fail ctx (format "system %s is not registered" store-current-system))
       (if (store--installed-p id)
           (let* ((metadata (store--read-state id))
                  (installed-version (plist-get metadata :required-version))
@@ -981,7 +1032,7 @@ immediately preceding call, recursively."
            ;; Plain font file: already at its final destination (DEST is
            ;; directly inside FONT-DIR), nothing left to copy.
            (finish (list dest))))
-       (lambda () (store-install-fail ctx))))))
+       (lambda () (store-install-fail ctx (format "download of %s failed" url)))))))
 
 (defun store--url-font-update (url ctx)
   (let* ((config (store--system-config))
@@ -1213,10 +1264,3 @@ immediately preceding call, recursively."
 (provide 'store)
 
 ;;; 40-store.el ends here
-
-;; BUG: git-credential-oauth keep getting installed with work windows
-;; and I believe it also prints (Shell command failed with code 5 and
-;; no output) as message. this message should also tell its origin
-
-;; BUG: docker-compose keep getting installed on work windows even
-;; with explicit t
