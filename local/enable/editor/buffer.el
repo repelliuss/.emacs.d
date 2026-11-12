@@ -16,11 +16,8 @@
   (:opt display-buffer-base-action '((display-buffer-reuse-window
 				                      display-buffer-reuse-mode-window
 				                      display-buffer-pop-up-window
-				                      display-buffer-same-window) . ((window-width . 0))))
-  (:prepend* display-buffer-alist '(("\\*compilation\\*" .
-				                     ((display-buffer-in-side-window) .
-				                      ((side . bottom)
-				                       (dedicated . t)))))))
+				                      display-buffer-same-window) . ((window-width . 0)))))
+;; Placement of popup buffers (help, compilation, search...) lives in popper.el.
 
 (defun rps-buffer-kill-all (&optional buffer-list interactive)
   "Kill all buffers and closes their windows.

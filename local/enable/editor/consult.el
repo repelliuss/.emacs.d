@@ -32,11 +32,12 @@
      [remap info] #'consult-info)
     (help-map "M" #'consult-man)
     (rps-keymap-normal
-     "`" #'consult-register-load
-     "~" #'consult-register-store
+     ;; plain ` and ~ belong to popups (popper.el)
+     "C-~" #'consult-register
      (:prefix "M-"
+       "`" #'consult-register-load
+       "~" #'consult-register-store
        "z" #'consult-kmacro
-       "`" #'consult-register
        "m" #'consult-mark
        "M" #'consult-global-mark
        "o" #'consult-outline
