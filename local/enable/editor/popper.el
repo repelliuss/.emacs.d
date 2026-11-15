@@ -48,7 +48,9 @@
      "`" #'popper-toggle
      "~" (cons "popup" rps-keymap-popup)))
 
-  (:opt popper-reference-buffers
+  (:opt popper-mode-line nil
+        ;; popper-mode-line '(:eval (propertize " POP " 'face 'mode-line-emphasis))
+        popper-reference-buffers
         '(;; Emacs internals
           "\\*Messages\\*"
           "\\*Warnings\\*"
@@ -71,9 +73,11 @@
           compilation-mode
           comint-mode
           "\\`\\*vc-git : "           ; not *vc-dir*, which is a real UI
-          "\\`magit-process: ")
-        popper-group-function #'popper-group-by-projectile
-        popper-mode-line '(:eval (propertize " POP " 'face 'mode-line-emphasis)))
+          "\\`magit-process: "
+          msvc-mode
+          premake-mode
+          agent-shell-mode)
+        popper-group-function #'popper-group-by-projectile)
 
   ;; `popper-group-by-projectile' errors until projectile is loaded, and
   ;; popper calls it as soon as the mode is on — projectile.el loads after
@@ -84,7 +88,7 @@
     ;; echo mode always thinks tab-line mode is on and logs a bogus
     ;; "incompatible" message at startup. It isn't on; say so first.
     (require 'popper-echo)
-    (setq popper-tab-line-mode nil)
+    (:opt popper-tab-line-mode nil)
     (popper-echo-mode 1)
 
     ;; Placement. Prepended after `popper-mode' added its catch-all rule, so
@@ -95,6 +99,12 @@
                        (or (derived-mode . help-mode)
                            (derived-mode . helpful-mode)
                            "\\*eldoc"))
+                  (display-buffer-reuse-window display-buffer-in-side-window)
+                  (side . right) (slot . 0) (window-width . 0.4)
+                  (body-function . select-window))
+
+                 ((and popper-display-control-p
+                       (derived-mode . agent-shell-mode))
                   (display-buffer-reuse-window display-buffer-in-side-window)
                   (side . right) (slot . 0) (window-width . 0.4)
                   (body-function . select-window))
