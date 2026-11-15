@@ -23,29 +23,27 @@
           org-roam-node-display-template (concat "${title:*} " (propertize "${tags:10}" 'face 'org-tag))))
   (:mkdir rps-dir-cache "org-roam")
   (:prepend display-buffer-alist '("\\*org-roam\\*"
-                                    (display-buffer-in-direction)
-                                    (direction . right)
-                                    (window-width . 0.33)
-                                    (window-height . fit-window-to-buffer)))
+                                   (display-buffer-in-direction)
+                                   (direction . right)
+                                   (window-width . 0.33)
+                                   (window-height . fit-window-to-buffer)))
   (:opt org-roam-capture-templates `(("n" "note" plain "%?"
-                                 :if-new (file+head "note/${slug}.org"
-                                                    ,(concat "#+title: ${title}\n"
-                                                             "#+date: %<%FT%T%z>\n"))
-                                 :unnarrowed t
-                                 :empty-lines 1))
-   org-roam-capture-ref-templates `(("r" "ref" plain "\n%?\n\n${body}" :target
-					                 (file+head "note/${slug}.org" ,(concat "#+title: ${title}\n"
-									                                        "#+date: %<%FT%T%z>"))
-					                 :unnarrowed t)))
+                                      :target (file+head "note/${slug}.org"
+                                                         ,(concat "#+title: ${title}\n"
+                                                                  "#+date: %<%FT%T%z>\n"))
+                                      :unnarrowed t
+                                      :empty-lines 1))
+        org-roam-capture-ref-templates `(("r" "ref" plain "\n%?\n\n${body}" :target
+					                      (file+head "note/${slug}.org" ,(concat "#+title: ${title}\n"
+									                                             "#+date: %<%FT%T%z>"))
+					                      :unnarrowed t)))
 
 
   (:after-this
     (:prepend org-roam-mode-sections #'org-roam-unlinked-references-section))
 
-  (:after org
-    (org-roam-db-autosync-mode 1))
-
-  )
+  (:after (enable-event :file "local" "org")
+    (org-roam-db-autosync-mode 1)))
 
 (cfg-pkg org-roam-ui
   (:bind rps-keymap-note
