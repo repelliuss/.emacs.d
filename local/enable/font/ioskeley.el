@@ -3,6 +3,9 @@
 (defun rps-fontaine-set-latest-preset ()
   (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular-ioskeley-mono)))
 
+(defun rps-ioskeley-set-mode-line-face (&rest _)
+  (set-face-attribute 'mode-line nil :family "Ioskeley Mono" :height 130))
+
 (store-install "https://github.com/ahatem/IoskeleyMono/releases/download/v2.1.0/IoskeleyMono.zip"
   :url-font t
   :then
@@ -30,9 +33,10 @@
           ;; after changing selected window.
           (:face mode-line (:family "Ioskeley Mono" :height 130))
           
-          ;; furthermore, spacious-padding-mode resets the mode-line for some reason
-          (:hook-to 'spacious-padding-mode
-            (lambda () (:face mode-line (:family "Ioskeley Mono" :height 130)))))
+          ;; furthermore, spacious-padding-mode and every theme (re)enable
+          ;; reset the mode-line face (verified: load-theme wipes it).
+          (:hook-to 'spacious-padding-mode #'rps-ioskeley-set-mode-line-face)
+          (:hook-to 'enable-theme-functions (90 #'rps-ioskeley-set-mode-line-face)))
         
         (when rps-system-android-p
           (defun rps-font-set-ioskeley ()
