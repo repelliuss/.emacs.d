@@ -284,8 +284,37 @@
 
 ;;; Keywords — misc
 
+;; `set-face-attribute' is not durable: anything that reaches `face-spec-set'
+;; resets the face first, discarding our attributes.  `load-theme' does it, and
+;; so do packages that ship their faces as a theme (fontaine, spacious-padding).
+;; So remember what `:face' declared and put it back whenever that happens.
+(defvar cfg-faces nil
+  "Alist of (FACE . ATTRIBUTES) declared with the `:face' keyword.")
+
+(defun cfg-face-set (face attributes)
+  "Set FACE's ATTRIBUTES and keep them set across face resets."
+  (let ((merged (copy-sequence (alist-get face cfg-faces))))
+    (while attributes
+      (setq merged (plist-put merged (pop attributes) (pop attributes))))
+    (setf (alist-get face cfg-faces) merged)
+    (apply #'set-face-attribute face nil merged)))
+
+(defun cfg-faces-apply (&rest _)
+  "Reapply every face declared with the `:face' keyword.
+Ignores its arguments, so it suits abnormal hooks and advice."
+  (dolist (entry cfg-faces)
+    (apply #'set-face-attribute (car entry) nil (cdr entry))))
+
+;; depth 90: run after the theme or package that just reset the faces.  frame
+;; creation matters because spacious-padding resets faces per new frame, which
+;; a daemon hits on every emacsclient connection.
+(dolist (hook '(enable-theme-functions
+                after-make-frame-functions
+                server-after-make-frame-hook))
+  (add-hook hook #'cfg-faces-apply 90))
+
 (cfg-define :face
-  (lambda (face spec) `(set-face-attribute ',face nil ,@spec))
+  (lambda (face spec) `(cfg-face-set ',face (list ,@spec)))
   :repeatable t :after-loaded t)
 
 (cfg-define :autoload
