@@ -82,7 +82,8 @@
 (cfg-pkg (:elpaca agent-shell-math-renderer
                   :host github
                   :repo "alberti42/agent-shell-math-renderer")
-  (:opt agent-shell-math-renderer-render-submitted-prompts t)
+  (:opt agent-shell-math-renderer-render-submitted-prompts t
+        agent-shell-math-renderer-render-inline-dollar nil)
   (:hook-into agent-shell-mode)
   (:hook-to 'enable-theme-functions #'agent-shell-math-renderer-on-theme-change))
 
